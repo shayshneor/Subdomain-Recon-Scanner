@@ -1,0 +1,40 @@
+import requests
+import concurrent.futures
+from colorama import Fore, Style
+
+SUBDOMAINS = [
+    'www', 'mail', 'ftp', 'webmail', 'ns1', 'ns2', 'blog', 'dev', 'admin', 'test'
+]
+
+HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (ReconBot)'
+}
+
+def scan_subdomain(domain, sub):
+    url = f"http://{sub}.{domain}"
+    try:
+        response = requests.get(url, headers=HEADERS, timeout=3)
+        status = response.status_code
+        print(f"{Fore.GREEN}[+] Found: {url} (Status: {status}){Style.RESET_ALL}")
+        analyze_response(url, response)
+    except requests.RequestException:
+        print(f"{Fore.RED}[-] Unreachable: {url}{Style.RESET_ALL}")
+
+def analyze_response(url, response):
+    if "Index of /" in response.text:
+        print(f"{Fore.YELLOW}[!] Directory listing found at {url}{Style.RESET_ALL}")
+    if "X-Powered-By" in response.headers:
+        print(f"{Fore.CYAN}[i] {url} is powered by {response.headers['X-Powered-By']}{Style.RESET_ALL}")
+    if "admin" in url or "login" in url:
+        print(f"{Fore.MAGENTA}[!] Possible admin panel: {url}{Style.RESET_ALL}")
+
+def main():
+    domain = input("Enter target domain (e.g. example.com): ").strip()
+    print(f"{Fore.BLUE}[*] Starting scan on {domain}...{Style.RESET_ALL}\n")
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        for sub in SUBDOMAINS:
+            executor.submit(scan_subdomain, domain, sub)
+
+if __name__ == "__main__":
+    main()
